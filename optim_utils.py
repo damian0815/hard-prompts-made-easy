@@ -285,11 +285,17 @@ def optimize_prompt_loop(model, tokenizer, token_embedding,
             tmp_embeds = prompt_embeds.detach().clone()
             tmp_embeds.data = projected_embeds.data
             tmp_embeds.requires_grad = True
+            #print("tmp_embeds has shape", tmp_embeds.shape)
             
             # padding
             # padded_embeds = copy.deepcopy(dummy_embeds)
             padded_embeds = dummy_embeds.detach().clone()
-            padded_embeds[dummy_ids == -1] = tmp_embeds[source_train_indices].reshape(-1, p_dim)
+            #print("padded_embeds has shape", padded_embeds.shape)
+            #print("dummy_ids == -1 is", dummy_ids == -1)
+            #print("padded_embeds[dummy_ids == -1] has shape", padded_embeds[dummy_ids == -1].shape)
+
+            #print(f"copying {source_train_indices} from tmp_embeds of shape {tmp_embeds.shape} to padded_embeds of shape {padded_embeds.shape} indices {target_train_indices}")
+            padded_embeds[target_train_indices] = tmp_embeds[source_train_indices].reshape(-1, p_dim)
 
             #print("doing loss with current padded:", decode_embeds(padded_embeds))    
 
@@ -407,4 +413,3 @@ def measure_similarity(orig_images, images, ref_model, ref_clip_preprocess, devi
         gen_feat = gen_feat / gen_feat.norm(dim=1, keepdim=True)
         
         return (ori_feat @ gen_feat.t()).mean().item()
-        
