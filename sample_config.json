@@ -6,7 +6,7 @@
     "prompt_bs": 1,
     "loss_weight": 1.0,
     "print_step": 100,
-    "batch_size": 1,
+    "batch_size": 2,
     "clip_model": "ViT-H-14",
     "clip_pretrain": "laion2b_s32b_b79k"
 }
