@@ -142,7 +142,7 @@ def initialize_prompt(tokenizer, token_embedding, args, device,
             [torch.tensor([bos_token_id] + prefix_ids), 
              torch.randint(len(tokenizer.encoder), (prompt_len,)), 
              torch.tensor(suffix_ids + [eos_token_id])
-            ]) for i in range(args.prompt_bs)])
+            ]) for i in range(args.prompt_bs)]).to(device)
         #prompt_ids = torch.randint(len(tokenizer.encoder), (args.prompt_bs, prompt_len)).to(device)
     
     #prompt_ids = prefix_ids + initial_ids + suffix_ids
@@ -271,6 +271,7 @@ def optimize_prompt_loop(model, tokenizer, token_embedding,
                 padded_embeds[target_train_indices] = projected_embeds[source_train_indices].reshape(-1, p_dim)
                 #print("evaluating score for:", decode_embeds(padded_embeds))    
                 logits_per_image, _ = model.forward_text_embedding(padded_embeds, dummy_ids, universal_target_features)
+                #print(logits_per_image.device, universal_loss_scales.device)
                 logits_per_image_scaled = logits_per_image * universal_loss_scales.unsqueeze(0).t()
                 #print("logits_per_image:", logits_per_image, ", scaled:", logits_per_image_scaled)
                 scores_per_prompt = logits_per_image.mean(dim=0)
@@ -344,10 +345,14 @@ def optimize_prompt_loop(model, tokenizer, token_embedding,
             break
 
 
+    best_sim = best[0][0]
+    best_text = best[0][1]
     if print_step is not None:
         print()
         print(f"best cosine sim: {best_sim}")
         print(f"best prompt: {best_text}")
+        print(f"top {len(best)}:")
+        print(best)
 
     return best_text
 
@@ -373,12 +378,13 @@ def optimize_prompt(model, preprocess, args, device,
                                              )
 
     all_target_loss_scales = torch.ones(len(all_target_features)) if target_loss_scales is None else target_loss_scales
+    all_target_loss_scales = all_target_loss_scales.to(device)
     
     # optimize prompt
     learned_prompt = optimize_prompt_loop(model, tokenizer, token_embedding, 
                                           all_target_features, 
                                            args, device,
-                                         all_target_loss_scales=target_loss_scales,
+                                         all_target_loss_scales=all_target_loss_scales,
                                          initial_prompt=initial_prompt,
                                           prompt_template=prompt_template,
                                          noise_amount=noise_amount)
@@ -401,3 +407,4 @@ def measure_similarity(orig_images, images, ref_model, ref_clip_preprocess, devi
         gen_feat = gen_feat / gen_feat.norm(dim=1, keepdim=True)
         
         return (ori_feat @ gen_feat.t()).mean().item()
+        
